@@ -131,6 +131,8 @@
           const publisherIndex = headers.indexOf("読んだ本①出版社");
           const timeIndex = headers.indexOf("読んだ本①かかった時間（〇分）");
           const commentIndex = headers.indexOf("感想");
+          const gradeIndex = headers.indexOf("学年");
+          const classIndex = headers.indexOf("クラス");
 
           const booksByDate = {};
           for (let i = 1; i < rows.length; i++) {
@@ -142,7 +144,9 @@
               author: row[authorIndex] || "著者不明",
               publisher: row[publisherIndex] || "出版社不明",
               time: row[timeIndex] || "時間不明",
-              comment: row[commentIndex] || ""
+              comment: row[commentIndex] || "",
+              grade: row[gradeIndex] || "学年不明",
+              class: row[classIndex] || "クラス不明"
             });
           }
 
@@ -163,6 +167,8 @@
                 <div>著者: ${book.author}</div>
                 <div>出版社: ${book.publisher}</div>
                 <div>読み聞かせ時間: ${book.time}</div>
+                <div>学年: ${book.grade}</div>
+                <div>クラス: ${book.class}</div>
                 <div>感想: ${book.comment}</div>
               `;
               groupDiv.appendChild(div);

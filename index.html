@@ -131,6 +131,7 @@
           const publisherIndex = headers.indexOf("読んだ本①出版社");
           const timeIndex = headers.indexOf("読んだ本①かかった時間（〇分）");
           const readerIndex = headers.indexOf("読んだ人");
+          const commentIndex = headers.indexOf("感想");
 
           const booksByDate = {};
           for (let i = 1; i < rows.length; i++) {
@@ -142,7 +143,9 @@
               author: row[authorIndex] || "著者不明",
               publisher: row[publisherIndex] || "出版社不明",
               time: row[timeIndex] || "時間不明",
-              reader: row[readerIndex] || "読んだ人不明"
+              reader: row[readerIndex] || "読んだ人不明",
+              comment: row[commentIndex] || "",
+              sheet: sheetName
             });
           }
 
@@ -164,6 +167,8 @@
                 <div>出版社: ${book.publisher}</div>
                 <div>読み聞かせ時間: ${book.time}</div>
                 <div>読んだ人: ${book.reader}</div>
+                <div>感想: ${book.comment}</div>
+                <div><small>（出典: ${book.sheet}）</small></div>
               `;
               groupDiv.appendChild(div);
             });

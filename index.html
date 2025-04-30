@@ -4,59 +4,76 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>読んだ本の検索結果</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        h1 {
+            text-align: center;
+            padding: 1em;
+        }
+        iframe {
+            width: 100%;
+            height: 600px;
+            border: none;
+        }
+        #books-list {
+            padding: 1em;
+        }
+        a {
+            color: #007acc;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        /* モバイル表示対応 */
+        @media screen and (max-width: 600px) {
+            iframe {
+                height: 400px;
+            }
+        }
+    </style>
 </head>
 <body>
     <h1>読んだ本の検索結果</h1>
 
     <!-- Google Sheetsを埋め込むためのiframeタグ -->
     <iframe 
-        src="https://docs.google.com/spreadsheets/d/e/2PACX-1vR87ecxMOYCeECCMdeNnsV9JnF_2j7M7oozOpua351YnzVv2m3G3mUTPQQoC9A7N4-gzjCQrdXrHyUd/pubhtml" 
-        width="100%" 
-        height="600px">
+        src="https://docs.google.com/spreadsheets/d/e/2PACX-1vR87ecxMOYCeECCMdeNnsV9JnF_2j7M7oozOpua351YnzVv2m3G3mUTPQQoC9A7N4-gzjCQrdXrHyUd/pubhtml?widget=true&amp;headers=true" 
+        allowfullscreen>
     </iframe>
 
-    <h2>読んだ本のタイトル</h2>
     <div id="books-list"></div>
 
     <script>
         // Google Sheetsの公開データをJSON形式で取得
-        fetch('https://spreadsheets.google.com/feeds/list/2PACX-1vR87ecxMOYCeECCMdeNnsV9JnF_2j7M7oozOpua351YnzVv2m3G3mUTPQQoC9A7N4-gzjCQrdXrHyUd/od6/public/values?alt=json')
+        fetch('https://spreadsheets.google.com/feeds/list/1SarPXCusjU4mcbWVMEPvZxF_1SonGemmOQ3yNFhlKhA/od6/public/values?alt=json')
             .then(response => response.json())
             .then(data => {
                 let booksList = document.getElementById("books-list");
-
                 data.feed.entry.forEach(entry => {
-                    const bookTitle = entry.gsx$読んだ本タイトル.$t; // E列から本のタイトルを取得
-                    const author = entry.gsx$著者.$t; // F列の著者を取得
-                    const publisher = entry.gsx$出版社.$t; // G列の出版社を取得
+                    const bookTitle = entry.gsx$読んだ本タイトル.$t; // E列
+                    const author = entry.gsx$著者.$t; // F列
+                    const publisher = entry.gsx$出版社.$t; // G列
 
                     // ハイパーリンクを作成
-                    const bookLink = document.createElement('a');
-                    bookLink.href = `https://www.hanmoto.com/bd/search/top?keyword=${encodeURIComponent(bookTitle)}&isbn=`;
-                    bookLink.target = "_blank"; // 新しいタブで開く
-                    bookLink.textContent = bookTitle; // タイトルをリンクとして設定
-                    bookLink.style.textDecoration = "underline"; // リンクに下線を追加
+                    const bookLink = `<a href="https://www.hanmoto.com/bd/search/top?keyword=${encodeURIComponent(bookTitle)}&isbn=" target="_blank">${bookTitle}</a>`;
 
                     // 本の情報を表示
-                    const bookItem = document.createElement('p');
-                    bookItem.appendChild(bookLink); // タイトルをリンクとして追加
-                    booksList.appendChild(bookItem); // 本のタイトルを表示
-
-                    // 著者情報を表示
-                    const authorInfo = document.createElement('p');
-                    authorInfo.textContent = `著者: ${author}`;
-                    booksList.appendChild(authorInfo);
-
-                    // 出版社情報を表示
-                    const publisherInfo = document.createElement('p');
-                    publisherInfo.textContent = `出版社: ${publisher}`;
-                    booksList.appendChild(publisherInfo);
+                    booksList.innerHTML += `
+                        <p>${bookLink}</p>
+                        <p>著者: ${author}</p>
+                        <p>出版社: ${publisher}</p>
+                        <hr>
+                    `;
                 });
             })
             .catch(error => {
                 console.error("エラーが発生しました: ", error);
             });
     </script>
-
 </body>
 </html>

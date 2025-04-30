@@ -1,79 +1,183 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>読んだ本の検索結果</title>
-    <style>
-        body {
-            font-family: sans-serif;
-            margin: 0;
-            padding: 0;
-        }
-        h1 {
-            text-align: center;
-            padding: 1em;
-        }
-        iframe {
-            width: 100%;
-            height: 600px;
-            border: none;
-        }
-        #books-list {
-            padding: 1em;
-        }
-        a {
-            color: #007acc;
-            text-decoration: none;
-        }
-        a:hover {
-            text-decoration: underline;
-        }
-        /* モバイル表示対応 */
-        @media screen and (max-width: 600px) {
-            iframe {
-                height: 400px;
-            }
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>読んだ本リスト</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+    .tab-container {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    .tab {
+      padding: 10px 15px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      background: #f0f0f0;
+      cursor: pointer;
+    }
+    .tab.active {
+      background: #d0e0ff;
+      font-weight: bold;
+    }
+    .book-group {
+      margin-bottom: 30px;
+    }
+    .book {
+      padding: 10px;
+      border-bottom: 1px solid #ccc;
+      margin-bottom: 10px;
+    }
+    .book-title a {
+      font-weight: bold;
+      font-size: 18px;
+      color: blue;
+      text-decoration: underline;
+    }
+    .refresh-btn {
+      padding: 10px 15px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    @media (max-width: 600px) {
+      .tab-container {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .tab {
+        width: 100%;
+      }
+      .refresh-btn {
+        width: 100%;
+      }
+    }
+  </style>
 </head>
 <body>
-    <h1>読んだ本の検索結果</h1>
+  <h1>読んだ本リスト</h1>
+  <div class="tab-container">
+    <div id="tabs">読み込み中...</div>
+    <button class="refresh-btn" onclick="loadSheetTabs()">🔄 再読み込み</button>
+  </div>
+  <div id="output">データを読み込み中...</div>
 
-    <!-- Google Sheetsを埋め込むためのiframeタグ -->
-    <iframe 
-        src="https://docs.google.com/spreadsheets/d/e/2PACX-1vR87ecxMOYCeECCMdeNnsV9JnF_2j7M7oozOpua351YnzVv2m3G3mUTPQQoC9A7N4-gzjCQrdXrHyUd/pubhtml?widget=true&amp;headers=true" 
-        allowfullscreen>
-    </iframe>
+  <script>
+    const apiKey = "AIzaSyCgnrScJJfUSdfCWqHPupNSS-8cekRJnKo";
+    const spreadsheetId = "1SarPXCusjU4mcbWVMEPvZxF_1SonGemmOQ3yNFhlKhA";
 
-    <div id="books-list"></div>
+    function loadSheetTabs() {
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?key=${apiKey}`;
+      fetch(url)
+        .then(response => response.json())
+        .then(data => {
+          const tabsDiv = document.getElementById("tabs");
+          tabsDiv.innerHTML = "";
 
-    <script>
-        // Google Sheetsの公開データをJSON形式で取得
-        fetch('https://spreadsheets.google.com/feeds/list/1SarPXCusjU4mcbWVMEPvZxF_1SonGemmOQ3yNFhlKhA/od6/public/values?alt=json')
-            .then(response => response.json())
-            .then(data => {
-                let booksList = document.getElementById("books-list");
-                data.feed.entry.forEach(entry => {
-                    const bookTitle = entry.gsx$読んだ本タイトル.$t; // E列
-                    const author = entry.gsx$著者.$t; // F列
-                    const publisher = entry.gsx$出版社.$t; // G列
+          const sheetNames = data.sheets.map(sheet => sheet.properties.title)
+            .filter(name => name.includes("年度読んだ本リスト"))
+            .sort((a, b) => b.localeCompare(a, 'ja'));
 
-                    // ハイパーリンクを作成
-                    const bookLink = `<a href="https://www.hanmoto.com/bd/search/top?keyword=${encodeURIComponent(bookTitle)}&isbn=" target="_blank">${bookTitle}</a>`;
+          sheetNames.forEach((name, index) => {
+            const tab = document.createElement("div");
+            tab.className = "tab";
+            tab.textContent = name.replace("年度読んだ本リスト", "") + "年度";
+            tab.onclick = () => {
+              document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+              tab.classList.add("active");
+              loadBooks(name);
+            };
+            if (index === 0) {
+              tab.classList.add("active");
+              loadBooks(name);
+            }
+            tabsDiv.appendChild(tab);
+          });
+        })
+        .catch(err => {
+          document.getElementById("tabs").textContent = "シート一覧の取得に失敗しました。";
+          console.error("タブ読み込みエラー:", err);
+        });
+    }
 
-                    // 本の情報を表示
-                    booksList.innerHTML += `
-                        <p>${bookLink}</p>
-                        <p>著者: ${author}</p>
-                        <p>出版社: ${publisher}</p>
-                        <hr>
-                    `;
-                });
-            })
-            .catch(error => {
-                console.error("エラーが発生しました: ", error);
+    function loadBooks(sheetName) {
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(sheetName)}?key=${apiKey}`;
+      fetch(url)
+        .then(response => response.json())
+        .then(data => {
+          const output = document.getElementById("output");
+          output.innerHTML = "";
+
+          const rows = data.values;
+          if (!rows || rows.length <= 1) {
+            output.textContent = "データがありません。";
+            return;
+          }
+
+          const headers = rows[0];
+          const dateIndex = headers.indexOf("読んだ日");
+          const titleIndex = headers.indexOf("読んだ本①タイトル");
+          const authorIndex = headers.indexOf("読んだ本①著者（例．〇〇／絵　〇〇／文）");
+          const publisherIndex = headers.indexOf("読んだ本①出版社");
+          const timeIndex = headers.indexOf("読んだ本①かかった時間（〇分）");
+          const readerIndex = headers.indexOf("読んだ人");
+
+          const booksByDate = {};
+          for (let i = 1; i < rows.length; i++) {
+            const row = rows[i];
+            const date = row[dateIndex] || "日付不明";
+            if (!booksByDate[date]) booksByDate[date] = [];
+            booksByDate[date].push({
+              title: row[titleIndex] || "タイトルなし",
+              author: row[authorIndex] || "著者不明",
+              publisher: row[publisherIndex] || "出版社不明",
+              time: row[timeIndex] || "時間不明",
+              reader: row[readerIndex] || "読んだ人不明"
             });
-    </script>
+          }
+
+          const sortedDates = Object.keys(booksByDate).sort((a, b) => new Date(b) - new Date(a));
+          sortedDates.forEach(date => {
+            const groupDiv = document.createElement("div");
+            groupDiv.className = "book-group";
+            const dateHeader = document.createElement("h2");
+            dateHeader.textContent = `📅 ${date}`;
+            groupDiv.appendChild(dateHeader);
+
+            booksByDate[date].forEach(book => {
+              const link = `https://www.hanmoto.com/bd/search/top?keyword=${encodeURIComponent(book.title)}&isbn=`;
+              const div = document.createElement("div");
+              div.className = "book";
+              div.innerHTML = `
+                <div class="book-title"><a href="${link}" target="_blank">${book.title}</a></div>
+                <div>著者: ${book.author}</div>
+                <div>出版社: ${book.publisher}</div>
+                <div>読み聞かせ時間: ${book.time}</div>
+                <div>読んだ人: ${book.reader}</div>
+              `;
+              groupDiv.appendChild(div);
+            });
+
+            output.appendChild(groupDiv);
+          });
+        })
+        .catch(error => {
+          document.getElementById("output").textContent = "データの取得に失敗しました。";
+          console.error("読書データ読み込みエラー:", error);
+        });
+    }
+
+    loadSheetTabs();
+  </script>
 </body>
 </html>

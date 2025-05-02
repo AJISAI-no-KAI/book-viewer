@@ -27,6 +27,9 @@
       background: #d0e0ff;
       font-weight: bold;
     }
+    .filter-container {
+      margin-bottom: 15px;
+    }
     .book-group {
       margin-bottom: 30px;
     }
@@ -55,10 +58,7 @@
         flex-direction: column;
         align-items: flex-start;
       }
-      .tab {
-        width: 100%;
-      }
-      .refresh-btn {
+      .tab, .refresh-btn, select {
         width: 100%;
       }
     }
@@ -70,11 +70,19 @@
     <div id="tabs">読み込み中...</div>
     <button class="refresh-btn" onclick="loadSheetTabs()">🔄 再読み込み</button>
   </div>
+  <div class="filter-container">
+    <label for="gradeFilter">学年で絞り込む:</label>
+    <select id="gradeFilter" onchange="filterByGrade()">
+      <option value="すべて">すべて</option>
+    </select>
+  </div>
   <div id="output">データを読み込み中...</div>
 
   <script>
     const apiKey = "AIzaSyCgnrScJJfUSdfCWqHPupNSS-8cekRJnKo";
     const spreadsheetId = "1SarPXCusjU4mcbWVMEPvZxF_1SonGemmOQ3yNFhlKhA";
+    let allBooksByDate = {};
+    let currentSheetName = "";
 
     function loadSheetTabs() {
       const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?key=${apiKey}`;
@@ -95,10 +103,12 @@
             tab.onclick = () => {
               document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
               tab.classList.add("active");
+              currentSheetName = name;
               loadBooks(name);
             };
             if (index === 0) {
               tab.classList.add("active");
+              currentSheetName = name;
               loadBooks(name);
             }
             tabsDiv.appendChild(tab);
@@ -115,12 +125,9 @@
       fetch(url)
         .then(response => response.json())
         .then(data => {
-          const output = document.getElementById("output");
-          output.innerHTML = "";
-
           const rows = data.values;
           if (!rows || rows.length <= 1) {
-            output.textContent = "データがありません。";
+            document.getElementById("output").textContent = "データがありません。";
             return;
           }
 
@@ -134,53 +141,86 @@
           const gradeIndex = headers.indexOf("学年");
           const classIndex = headers.indexOf("クラス");
 
-          const booksByDate = {};
+          allBooksByDate = {};
+          const gradeSet = new Set();
+
           for (let i = 1; i < rows.length; i++) {
             const row = rows[i];
             const date = row[dateIndex] || "日付不明";
-            if (!booksByDate[date]) booksByDate[date] = [];
-            booksByDate[date].push({
+            const grade = row[gradeIndex] || "学年不明";
+            gradeSet.add(grade);
+
+            if (!allBooksByDate[date]) allBooksByDate[date] = [];
+            allBooksByDate[date].push({
               title: row[titleIndex] || "タイトルなし",
               author: row[authorIndex] || "著者不明",
               publisher: row[publisherIndex] || "出版社不明",
               time: row[timeIndex] || "時間不明",
               comment: row[commentIndex] || "",
-              grade: row[gradeIndex] || "学年不明",
+              grade: grade,
               class: row[classIndex] || "クラス不明"
             });
           }
 
-          const sortedDates = Object.keys(booksByDate).sort((a, b) => new Date(b) - new Date(a));
-          sortedDates.forEach(date => {
-            const groupDiv = document.createElement("div");
-            groupDiv.className = "book-group";
-            const dateHeader = document.createElement("h2");
-            dateHeader.textContent = `📅 ${date}`;
-            groupDiv.appendChild(dateHeader);
-
-            booksByDate[date].forEach(book => {
-              const link = `https://www.hanmoto.com/bd/search/top?keyword=${encodeURIComponent(book.title)}&isbn=`;
-              const div = document.createElement("div");
-              div.className = "book";
-              div.innerHTML = `
-                <div class="book-title"><a href="${link}" target="_blank">${book.title}</a></div>
-                <div>著者: ${book.author}</div>
-                <div>出版社: ${book.publisher}</div>
-                <div>読み聞かせ時間: ${book.time}</div>
-                <div>学年: ${book.grade}</div>
-                <div>クラス: ${book.class}</div>
-                <div>感想: ${book.comment}</div>
-              `;
-              groupDiv.appendChild(div);
-            });
-
-            output.appendChild(groupDiv);
+          // 学年フィルター更新
+          const filter = document.getElementById("gradeFilter");
+          filter.innerHTML = `<option value="すべて">すべて</option>`;
+          Array.from(gradeSet).sort().forEach(grade => {
+            const opt = document.createElement("option");
+            opt.value = grade;
+            opt.textContent = grade;
+            filter.appendChild(opt);
           });
+
+          renderBooks();
         })
         .catch(error => {
           document.getElementById("output").textContent = "データの取得に失敗しました。";
           console.error("読書データ読み込みエラー:", error);
         });
+    }
+
+    function renderBooks() {
+      const selectedGrade = document.getElementById("gradeFilter").value;
+      const output = document.getElementById("output");
+      output.innerHTML = "";
+
+      const sortedDates = Object.keys(allBooksByDate).sort((a, b) => new Date(b) - new Date(a));
+      sortedDates.forEach(date => {
+        const books = allBooksByDate[date].filter(book =>
+          selectedGrade === "すべて" || book.grade === selectedGrade
+        );
+
+        if (books.length === 0) return;
+
+        const groupDiv = document.createElement("div");
+        groupDiv.className = "book-group";
+        const dateHeader = document.createElement("h2");
+        dateHeader.textContent = `📅 ${date}`;
+        groupDiv.appendChild(dateHeader);
+
+        books.forEach(book => {
+          const link = `https://www.hanmoto.com/bd/search/top?keyword=${encodeURIComponent(book.title)}&isbn=`;
+          const div = document.createElement("div");
+          div.className = "book";
+          div.innerHTML = `
+            <div class="book-title"><a href="${link}" target="_blank">${book.title}</a></div>
+            <div>著者: ${book.author}</div>
+            <div>出版社: ${book.publisher}</div>
+            <div>読み聞かせ時間: ${book.time}</div>
+            <div>学年: ${book.grade}</div>
+            <div>クラス: ${book.class}</div>
+            <div>感想: ${book.comment}</div>
+          `;
+          groupDiv.appendChild(div);
+        });
+
+        output.appendChild(groupDiv);
+      });
+    }
+
+    function filterByGrade() {
+      renderBooks();
     }
 
     loadSheetTabs();
